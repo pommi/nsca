@@ -1,24 +1,24 @@
 /************************************************************************
- *
- * COMMON.H - NSCA Common Include File
- * Copyright (c) 1999-2003 Ethan Galstad (nagios@nagios.org)
- * Last Modified: 01-27-2012
- *
- * License:
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+    COMMON.H - NSCA Common Include File
+    Copyright (c) 1999-2003 Ethan Galstad (nagios@nagios.org)
+    Last Modified: 01-27-2012
+
+    License:
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  ************************************************************************/
 
 #include "config.h"
@@ -111,7 +111,7 @@
 #define NSCA_PACKET_VERSION_1	1
 
 /* data packet containing service check results */
-typedef struct data_packet_struct{
+typedef struct data_packet_struct {
 	int16_t   packet_version;
 	u_int32_t crc32_value;
 	u_int32_t timestamp;
@@ -119,13 +119,13 @@ typedef struct data_packet_struct{
 	char      host_name[MAX_HOSTNAME_LENGTH];
 	char      svc_description[MAX_DESCRIPTION_LENGTH];
 	char      plugin_output[MAX_PLUGINOUTPUT_LENGTH];
-        }data_packet;
+} data_packet;
 
 /* initialization packet containing IV and timestamp */
-typedef struct init_packet_struct{
+typedef struct init_packet_struct {
 	char      iv[TRANSMITTED_IV_SIZE];
 	u_int32_t timestamp;
-        }init_packet;
+} init_packet;
 
 
 
