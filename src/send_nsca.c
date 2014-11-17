@@ -61,6 +61,7 @@ int main(int argc, char **argv) {
 	int rc;
 	int result;
 	data_packet send_packet;
+	char *snd_pkt_ptr = (char *)&send_packet;
 	int bytes_to_send;
 	char input[MAX_INPUT_BUFFER];
 	char input_buffer[MAX_INPUT_BUFFER];
@@ -73,6 +74,10 @@ int main(int argc, char **argv) {
 	u_int32_t calculated_crc32;
 	char *inputptr, *ptr1, *ptr2, *ptr3, *ptr4;
 
+	/* utils.h */
+	int x, y;
+	unsigned long crc;
+	unsigned long crc32_table[256];
 
 	/* process command-line arguments */
 	result=process_arguments(argc,argv);
@@ -174,8 +179,11 @@ int main(int argc, char **argv) {
 	printf("Got init packet from server\n");
 #endif
 
+	/* initialize srand() once per execution */
+	initialize_seed();
+
 	/* initialize encryption/decryption routines with the IV we received from the server */
-	if (encrypt_init(password,encryption_method,received_iv,&CI)!=OK) {
+	if (!(CI=encrypt_init(password,encryption_method,received_iv))) {
 		printf("Error: Failed to initialize encryption libraries for method %d\n",encryption_method);
 		close(sd);
 		do_exit(STATE_CRITICAL);
@@ -252,7 +260,7 @@ int main(int argc, char **argv) {
 		bzero(&send_packet,sizeof(send_packet));
 
 		/* fill the packet with semi-random data */
-		randomize_buffer((char *)&send_packet,sizeof(send_packet));
+		randomize_buffer(snd_pkt_ptr,sizeof(send_packet));
 
 		/* copy the data we want to send into the packet */
 		send_packet.packet_version=(int16_t)htons(NSCA_PACKET_VERSION_3);
@@ -266,15 +274,15 @@ int main(int argc, char **argv) {
 
 		/* calculate the crc 32 value of the packet */
 		send_packet.crc32_value=(u_int32_t)0L;
-		calculated_crc32=calculate_crc32((char *)&send_packet,sizeof(send_packet));
+		calculate_crc32(snd_pkt_ptr,sizeof(send_packet),calculated_crc32);
 		send_packet.crc32_value=(u_int32_t)htonl(calculated_crc32);
 
 		/* encrypt the packet */
-		encrypt_buffer((char *)&send_packet,sizeof(send_packet),password,encryption_method,CI);
+		encrypt_buffer(snd_pkt_ptr,sizeof(send_packet),password,encryption_method,CI);
 
 		/* send the packet */
 		bytes_to_send=sizeof(send_packet);
-		rc=sendall(sd,(char *)&send_packet,&bytes_to_send);
+		rc=sendall(sd,snd_pkt_ptr,&bytes_to_send);
 
 		/* there was an error sending the packet */
 		if (rc==-1) {
