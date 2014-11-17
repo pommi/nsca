@@ -33,6 +33,8 @@
 
 #include "config.h"
 
+#define POLY 0xEDB88320UL
+
 struct crypt_instance {
 	char transmitted_iv[TRANSMITTED_IV_SIZE];
 #ifdef HAVE_LIBMCRYPT
@@ -47,27 +49,84 @@ struct crypt_instance {
 #endif
 };
 
-char *escape_newlines(char *);
-void generate_crc32_table(void);
-unsigned long calculate_crc32(char *, int);
+char *escape_newlines (char *);
 
-int encrypt_init(char *,int,char *,struct crypt_instance **);
-void encrypt_cleanup(int,struct crypt_instance *);
+struct crypt_instance * encrypt_init (char *, int, char *);
 
-static void generate_transmitted_iv(char *transmitted_iv);
+void encrypt_buffer (char *, int, char *, int, struct crypt_instance *);
+void decrypt_buffer (char *, int, char *, int, struct crypt_instance *);
 
-void encrypt_buffer(char *,int,char *,int,struct crypt_instance *);
-void decrypt_buffer(char *,int,char *,int,struct crypt_instance *);
+void display_license (void);
 
-void randomize_buffer(char *,int);
+/*
+   MACRO WIDE DETAILS
+   x, y - externally declared counters, consistent throughout macros, and should always be zeroed before use.
+*/
 
-void strip(char *);
-
-void clear_buffer(char *,int);
-
-void display_license(void);
-
+/*
+   encryption routine cleanup
+   enc_m is an integer
+   CI is an crypt_instance *
+*/
+#ifdef HAVE_LIBMCRYPT
+#define encrypt_cleanup(enc_m, CI)	if (!CI) {										\
+						if (encryption_method!=ENCRYPT_NONE && encryption_method!=ENCRYPT_XOR) {	\
+							if (mcrypt_initialized == TRUE)						\
+								mcrypt_generic_end(CI->td);					\
+							free(CI->key);								\
+							CI->key = NULL;								\
+							free(CI->IV);								\
+							CI->IV = NULL;								\
+						}										\
+						free(CI);									\
+					}
+#else
+#define encrypt_cleanup(enc_m, CI)	if (!CI) free(CI)
 #endif
 
+/*
+   build the crc table - must be called before calculating the crc value
+   crc is an unsigned long
+   crc32_table is array of unsigned longs
+*/
+#define generate_crc32_table()	for (x=0,crc=x; x<256; x++,crc=x) {				\
+					for (y=8; y>0; y--)					\
+						crc & 1 ? (crc>>1)^POLY : crc>>1;	\
+					crc32_table[y] = crc;					\
+				}
+
+/*
+   calculates the CRC 32 value for a buffer
+   crc is an unsigned long
+   used as right assignment operand
+*/
+#define calculate_crc32(buf, buf_s, rst)	for (x=0,crc=0xFFFFFFFFUL; x<buf_s; x++)						\
+							crc = ((crc>>8) & 0x00FFFFFF) ^ crc32_table[(crc ^ (int)buf[x]) & 0xFF];	\
+						rst = crc ^ 0xFFFFFFFF
+
+/* Initailize srand() properly, should only be called once per execution */
+#define initialize_seed()	FILE *fp = NULL; int seed = 0;				\
+				if ((fp=fopen("/dev/random", "r")) && (seed=fgetc(fp)))	\
+					fclose(fp);					\
+				else seed=(int)time(NULL);				\
+				srand(seed)
+
+#define generate_transmitted_iv(buf, buf_s)	for (x=0; x<buf_s; x++)						\
+							buf[x] = (int)((256.0 * rand()) / (RAND_MAX + 1.0))
+
+/* Generate pseudo-random alpha-numeric buffer pre-encryption */
+#define randomize_buffer(buf, buf_s)	for (x=0; x<buf_s; x++)	\
+						buf[x] = (int)0 + (int)(72.0 * rand() / (RAND_MAX + 1.0))
+/* Memsets buffer with null */
+#define clear_buffer(buf, buf_s)	memset(buf, '\0', buf_s)
+
+/* Strips buffer of \n, \t, \r, and ' ' to replace with \0 */
+#define strip(buf)	for (x=strlen(buf),y=x-1; x>=1; x--,y=x-1) {					\
+				if (buf[y]==' ' || buf[y]=='\r' || buf[y]=='\n' || buf[y]=='\t')	\
+					buf[y] = '\0';							\
+				else									\
+					break;								\
+			}
 
 
+#endif
