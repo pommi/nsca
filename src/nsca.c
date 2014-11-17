@@ -22,7 +22,6 @@
 #include "../include/utils.h"
 #include "../include/nsca.h"
 
-
 static int server_port=DEFAULT_SERVER_PORT;
 static char server_address[16]="0.0.0.0";
 static int socket_timeout=DEFAULT_SOCKET_TIMEOUT;
@@ -45,7 +44,6 @@ char    *nsca_group=NULL;
 
 char    *nsca_chroot=NULL;
 char    *check_result_path=NULL;
-
 
 char    *pid_file=NULL;
 int     wrote_pid_file=FALSE;
@@ -70,15 +68,22 @@ int     nrhand=0;
 int     nwhand=0;
 int     npfds=0;
 
+unsigned long crc;
+static unsigned long crc32_table[256];
+int encryption_method = ENCRYPT_XOR;
+
 #ifdef HAVE_LIBWRAP
 int     allow_severity=LOG_INFO;
 int     deny_severity=LOG_WARNING;
 #endif
 
-
+#ifdef HAVE_LIBMCRYPT
+int mcrypt_initialized = FALSE;
+#endif
 
 int main(int argc, char **argv) {
 	char buffer[MAX_INPUT_BUFFER];
+	int x, y, z;
 	int result;
 	uid_t uid=-1;
 	gid_t gid=-1;
@@ -170,7 +175,6 @@ int main(int argc, char **argv) {
 
 	/* generate the CRC 32 table */
 	generate_crc32_table();
-
 
 	/* how should we handle client connections? */
 	switch (mode) {
@@ -938,6 +942,9 @@ static void accept_connection(int sock, void *unused) {
 		}
 	}
 
+	/* final fork, initialize srand() */
+	initialize_seed();
+
 	/* find out who just connected... */
 	addrlen=sizeof(addr);
 	rc=getpeername(new_sd,&addr,&addrlen);
@@ -991,7 +998,7 @@ static void handle_connection(int sock, void *data) {
 	fcntl(sock,F_SETFL,flags|O_NONBLOCK);
 
 	/* initialize encryption/decryption routines (server generates the IV to use and send to the client) */
-	if (encrypt_init(password,decryption_method,NULL,&CI)!=OK) {
+	if (!(CI=encrypt_init(password,decryption_method,NULL))) {
 		close(sock);
 		if (mode==MULTI_PROCESS_DAEMON)
 			do_exit(STATE_CRITICAL);
@@ -1067,13 +1074,17 @@ static void handle_connection_read(int sock, void *data) {
 	int packet_length=sizeof(receive_packet);
 	int plugin_length=MAX_PLUGINOUTPUT_LENGTH;
 
+	/* utils.h */
+	int x;
+	char *recv_pkt_ptr = (char *)&receive_packet;
+
 	CI=data;
 
 	/* process all data we get from the client... */
 
 	/* read the packet from the client */
 	bytes_to_recv=sizeof(receive_packet);
-	rc=recvall(sock,(char *)&receive_packet,&bytes_to_recv,socket_timeout);
+	rc=recvall(sock,recv_pkt_ptr,&bytes_to_recv,socket_timeout);
 
 	/* recv() error or client disconnect */
 	if (rc<=0) {
@@ -1109,7 +1120,7 @@ static void handle_connection_read(int sock, void *data) {
 		register_read_handler(sock, handle_connection_read, (void *)CI);
 
 	/* decrypt the packet */
-	decrypt_buffer((char *)&receive_packet,packet_length,password,decryption_method,CI);
+	decrypt_buffer(recv_pkt_ptr,packet_length,password,decryption_method,CI);
 
 	/* make sure this is the right type of packet */
 	if (ntohs(receive_packet.packet_version)!=NSCA_PACKET_VERSION_3) {
@@ -1125,7 +1136,7 @@ static void handle_connection_read(int sock, void *data) {
 	/* check the crc 32 value */
 	packet_crc32=ntohl(receive_packet.crc32_value);
 	receive_packet.crc32_value=0L;
-	calculated_crc32=calculate_crc32((char *)&receive_packet,packet_length);
+	calculate_crc32(recv_pkt_ptr, packet_length, calculated_crc32);
 	if (packet_crc32!=calculated_crc32) {
 		syslog(LOG_ERR,"Dropping packet with invalid CRC32 - possibly due to client using wrong password or crypto algorithm?");
 		/*return;*/
