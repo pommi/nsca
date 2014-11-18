@@ -58,7 +58,6 @@ static void do_exit(int);
 
 int main(int argc, char **argv) {
 	int sd;
-	int rc;
 	int result;
 	data_packet send_packet;
 	char *snd_pkt_ptr = (char *)&send_packet;
@@ -155,10 +154,10 @@ int main(int argc, char **argv) {
 	time(&start_time);
 
 	/* try to connect to the host at the given port number */
-	result=my_tcp_connect(server_name,server_port,&sd);
+	sd = my_connect(server_name, server_port);
 
 	/* we couldn't connect */
-	if (result!=STATE_OK) {
+	if (!sd) {
 		printf("Error: Could not connect to host %s on port %d\n",server_name,server_port);
 		do_exit(STATE_CRITICAL);
 	}
@@ -168,8 +167,7 @@ int main(int argc, char **argv) {
 #endif
 
 	/* read the initialization packet containing the IV and timestamp */
-	result=read_init_packet(sd);
-	if (result!=OK) {
+	if (read_init_packet(sd) != OK) {
 		printf("Error: Could not read init packet from server\n");
 		close(sd);
 		do_exit(STATE_CRITICAL);
@@ -257,7 +255,7 @@ int main(int argc, char **argv) {
 		total_packets++;
 
 		/* clear the packet buffer */
-		bzero(&send_packet,sizeof(send_packet));
+		clear_buffer(&send_packet,sizeof(send_packet));
 
 		/* fill the packet with semi-random data */
 		randomize_buffer(snd_pkt_ptr,sizeof(send_packet));
@@ -282,18 +280,18 @@ int main(int argc, char **argv) {
 
 		/* send the packet */
 		bytes_to_send=sizeof(send_packet);
-		rc=sendall(sd,snd_pkt_ptr,&bytes_to_send);
+		bytes_to_send = sendall(sd, snd_pkt_ptr, bytes_to_send);
 
 		/* there was an error sending the packet */
-		if (rc==-1) {
+		if (bytes_to_send == -1) {
 			printf("Error: Could not send data to host\n");
 			close(sd);
 			do_exit(STATE_UNKNOWN);
 		}
 
 		/* for some reason we didn't send all the bytes we were supposed to */
-		else if (bytes_to_send<sizeof(send_packet)) {
-			printf("Warning: Sent only %d of %d bytes to host\n",rc,sizeof(send_packet));
+		else if (bytes_to_send < sizeof(send_packet)) {
+			printf("Warning: Sent only %d of %d bytes to host\n", bytes_to_send, sizeof(send_packet));
 			close(sd);
 			return STATE_UNKNOWN;
 		}
@@ -350,22 +348,22 @@ int read_init_packet(int sock) {
 	int bytes_to_recv;
 
 	/* clear the IV and timestamp */
-	bzero(&received_iv,TRANSMITTED_IV_SIZE);
+	clear_buffer(&received_iv,TRANSMITTED_IV_SIZE);
 	packet_timestamp=(time_t)0;
 
 	/* get the init packet from the server */
 	bytes_to_recv=sizeof(receive_packet);
-	rc=recvall(sock,(char *)&receive_packet,&bytes_to_recv,socket_timeout);
+	bytes_to_recv = recvall(sock, (char *)&receive_packet, bytes_to_recv, socket_timeout);
 
 	/* recv() error or server disconnect */
-	if (rc<=0) {
+	if (bytes_to_recv <= 0) {
 		printf("Error: Server closed connection before init packet was received\n");
 		return ERROR;
 	}
 
 	/* we couldn't read the correct amount of data, so bail out */
-	else if (bytes_to_recv!=sizeof(receive_packet)) {
-		printf("Error: Init packet from server was too short (%d bytes received, %d expected)\n",bytes_to_recv,sizeof(receive_packet));
+	else if (bytes_to_recv != sizeof(receive_packet)) {
+		printf("Error: Init packet from server was too short (%d bytes received, %d expected)\n", bytes_to_recv, sizeof(receive_packet));
 		return ERROR;
 	}
 
