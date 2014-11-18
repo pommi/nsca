@@ -91,7 +91,7 @@ void display_license (void);
 */
 #define generate_crc32_table()	for (x=0,crc=x; x<256; x++,crc=x) {				\
 					for (y=8; y>0; y--)					\
-						crc & 1 ? (crc>>1)^POLY : crc>>1;	\
+						crc = (crc & 1) ? (crc>>1)^POLY : crc>>1;	\
 					crc32_table[y] = crc;					\
 				}
 
