@@ -983,7 +983,6 @@ static void accept_connection(int sock, void *unused) {
 static void handle_connection(int sock, void *data) {
 	init_packet send_packet;
 	int bytes_to_send;
-	int rc;
 	int flags;
 	time_t packet_send_time;
 	struct crypt_instance *CI;
@@ -1012,10 +1011,10 @@ static void handle_connection(int sock, void *data) {
 
 	/* send client the initial packet */
 	bytes_to_send=sizeof(send_packet);
-	rc=sendall(sock,(char *)&send_packet,&bytes_to_send);
+	bytes_to_send = sendall(sock, (char *)&send_packet, bytes_to_send);
 
 	/* there was an error sending the packet */
-	if (rc==-1) {
+	if (bytes_to_send == -1) {
 		syslog(LOG_ERR,"Could not send init packet to client\n");
 		encrypt_cleanup(decryption_method,CI);
 		close(sock);
@@ -1026,7 +1025,7 @@ static void handle_connection(int sock, void *data) {
 
 	/* for some reason we didn't send all the bytes we were supposed to */
 	else if (bytes_to_send<sizeof(send_packet)) {
-		syslog(LOG_ERR,"Only able to send %d of %d bytes of init packet to client\n",rc,sizeof(send_packet));
+		syslog(LOG_ERR, "Only able to send %d of %d bytes of init packet to client\n", bytes_to_send, sizeof(send_packet));
 		encrypt_cleanup(decryption_method,CI);
 		close(sock);
 		if (mode==MULTI_PROCESS_DAEMON)
@@ -1067,7 +1066,6 @@ static void handle_connection_read(int sock, void *data) {
 	int16_t return_code;
 	unsigned long packet_age=0L;
 	int bytes_to_recv;
-	int rc;
 	char host_name[MAX_HOSTNAME_LENGTH];
 	char svc_description[MAX_DESCRIPTION_LENGTH];
 	char plugin_output[MAX_PLUGINOUTPUT_LENGTH];
@@ -1084,10 +1082,10 @@ static void handle_connection_read(int sock, void *data) {
 
 	/* read the packet from the client */
 	bytes_to_recv=sizeof(receive_packet);
-	rc=recvall(sock,recv_pkt_ptr,&bytes_to_recv,socket_timeout);
+	bytes_to_recv = recvall(sock,recv_pkt_ptr,bytes_to_recv,socket_timeout);
 
 	/* recv() error or client disconnect */
-	if (rc<=0) {
+	if (bytes_to_recv <= 0) {
 		if (OLD_PACKET_LENGTH == bytes_to_recv) {
 			packet_length=OLD_PACKET_LENGTH;
 			plugin_length=OLD_PLUGINOUTPUT_LENGTH;
