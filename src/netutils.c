@@ -31,91 +31,58 @@
 
 #include "../include/common.h"
 #include "../include/netutils.h"
-
-
-
-/* opens a connection to a remote host/tcp port */
-int my_tcp_connect(char *host_name,int port,int *sd) {
-	int result;
-
-	result=my_connect(host_name,port,sd,"tcp");
-
-	return result;
-}
-
+#include "../include/utils.h"
 
 /* opens a tcp or udp connection to a remote host */
-int my_connect(char *host_name,int port,int *sd,char *proto) {
+// removed sd arg, returns null or sd
+int my_connect(char *host_name, int port) {
 	struct sockaddr_in servaddr;
 	struct hostent *hp;
-	struct protoent *ptrp;
-	int result;
+	int sd;
 
-	bzero((char *)&servaddr,sizeof(servaddr));
-	servaddr.sin_family=AF_INET;
-	servaddr.sin_port=htons(port);
+	clear_buffer((char *)&servaddr, sizeof(servaddr));
+	servaddr.sin_family = AF_INET;
+	servaddr.sin_port = htons(port);
 
 	/* try to bypass using a DNS lookup if this is just an IP address */
-	if (!my_inet_aton(host_name,&servaddr.sin_addr)) {
+	if (!my_inet_aton(host_name, &servaddr.sin_addr)) {
 
 		/* else do a DNS lookup */
-		hp=gethostbyname((const char *)host_name);
-		if (hp==NULL) {
-			printf("Invalid host name '%s'\n",host_name);
-			return STATE_UNKNOWN;
+		hp = gethostbyname((const char *)host_name);
+		if (!hp) {
+			printf("%s \'%s\'\n", "Invalid host name", host_name);
+			return 0;
 		}
 
-		memcpy(&servaddr.sin_addr,hp->h_addr,hp->h_length);
-	}
-
-	/* map transport protocol name to protocol number */
-	if (((ptrp=getprotobyname(proto)))==NULL) {
-		printf("Cannot map \"%s\" to protocol number\n",proto);
-		return STATE_UNKNOWN;
+		memcpy(&servaddr.sin_addr, hp->h_addr,
+			(hp->h_length < sizeof(servaddr.sin_addr)) ? hp->h_length : sizeof(servaddr.sin_addr));
 	}
 
 	/* create a socket */
-	*sd=socket(PF_INET,(!strcmp(proto,"udp"))?SOCK_DGRAM:SOCK_STREAM,ptrp->p_proto);
-	if (*sd<0) {
-		printf("Socket creation failed\n");
-		return STATE_UNKNOWN;
+	if ((sd = socket(PF_INET, SOCK_STREAM, PRTP_PROTO)) <= 0) {
+		printf("%s\n", "Socket creation failed");
+		return 0;
 	}
 
 	/* open a connection */
-	result=connect(*sd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-	if (result<0) {
-		switch (errno) {
-			case ECONNREFUSED:
-				printf("Connection refused by host\n");
-				break;
-			case ETIMEDOUT:
-				printf("Timeout while attempting connection\n");
-				break;
-			case ENETUNREACH:
-				printf("Network is unreachable\n");
-				break;
-			default:
-				printf("Connection refused or timed out\n");
-		}
-
-		return STATE_CRITICAL;
+	if (connect(sd, (struct sockaddr *)&servaddr, sizeof(servaddr))) {
+		printf("%s - %s\n", "Connection failed:", strerror(errno));
+		return 0;
 	}
 
-	return STATE_OK;
+	return sd;
 }
-
-
 
 /*  This code was taken from Fyodor's nmap utility, which was originally taken from
     the GLIBC 2.0.6 libraries because Solaris doesn't contain the inet_aton() funtion. */
-int my_inet_aton(register const char *cp, struct in_addr *addr) {
-	register unsigned int val;	/* changed from u_long --david */
-	register int base, n;
-	register char c;
-	u_int parts[4];
-	register u_int *pp = parts;
+int my_inet_aton(const char *cp, struct in_addr *addr) {
+	uint32_t val;	/* changed from u_long --david */
+	int base, n;
+	char c;
+	uint32_t parts[4];	//TODO is this portable to 64bit archs?
+	uint32_t *pp = parts;
 
-	c=*cp;
+	c = *cp;
 
 	for (;;) {
 
@@ -126,29 +93,29 @@ int my_inet_aton(register const char *cp, struct in_addr *addr) {
 		*/
 		if (!isdigit((int)c))
 			return (0);
-		val=0;
-		base=10;
+		val = 0;
+		base = 10;
 
 		if (c=='0') {
-			c=*++cp;
-			if (c=='x'||c=='X')
-				base=16,c=*++cp;
+			c = *++cp;
+			if (c == 'x' || c == 'X')
+				base = 16, c = *++cp;
 			else
-				base=8;
+				base = 8;
 		}
 
 		for (;;) {
 			if (isascii((int)c) && isdigit((int)c)) {
-				val=(val*base)+(c -'0');
-				c=*++cp;
-			} else if (base==16 && isascii((int)c) && isxdigit((int)c)) {
-				val=(val<<4) | (c+10-(islower((int)c)?'a':'A'));
+				val = (val * base) + (c - '0');
+				c = *++cp;
+			} else if (base == 16 && isascii((int)c) && isxdigit((int)c)) {
+				val = (val << 4) | (c + 10 - (islower((int)c) ? 'a' : 'A'));
 				c = *++cp;
 			} else
 				break;
 		}
 
-		if (c=='.') {
+		if (c == '.') {
 
 			/*
 			    Internet format:
@@ -156,20 +123,20 @@ int my_inet_aton(register const char *cp, struct in_addr *addr) {
 			 	a.b.c	(with c treated as 16 bits)
 			 	a.b	(with b treated as 24 bits)
 			*/
-			if (pp>=parts+3)
+			if (pp >= parts + 3)
 				return (0);
-			*pp++=val;
-			c=*++cp;
+			*pp++ = val;
+			c = *++cp;
 		} else
 			break;
 	}
 
 	/* Check for trailing characters */
-	if (c!='\0' && (!isascii((int)c) || !isspace((int)c)))
+	if (c && (!isascii((int)c) || !isspace((int)c)))
 		return (0);
 
 	/* Concoct the address according to the number of parts specified */
-	n=pp-parts+1;
+	n = pp - parts + 1;
 	switch (n) {
 
 		case 0:
@@ -179,94 +146,87 @@ int my_inet_aton(register const char *cp, struct in_addr *addr) {
 			break;
 
 		case 2:				/* a.b -- 8.24 bits */
-			if (val>0xffffff)
+			if (val > 0xffffff)
 				return (0);
-			val|=parts[0]<<24;
+			val |= parts[0] << 24;
 			break;
 
 		case 3:				/* a.b.c -- 8.8.16 bits */
-			if (val>0xffff)
+			if (val > 0xffff)
 				return (0);
-			val|=(parts[0]<< 24) | (parts[1]<<16);
+			val |= (parts[0] << 24) | (parts[1] << 16);
 			break;
 
 		case 4:				/* a.b.c.d -- 8.8.8.8 bits */
-			if (val>0xff)
+			if (val > 0xff)
 				return (0);
-			val|=(parts[0]<<24) | (parts[1]<<16) | (parts[2]<<8);
+			val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
 			break;
 	}
 
 	if (addr)
-		addr->s_addr=htonl(val);
+		addr->s_addr = htonl(val);
 
 	return (1);
 }
 
-
-
 /* sends all data - thanks to Beej's Guide to Network Programming */
-int sendall(int s, char *buf, int *len) {
-	int total=0;
-	int bytesleft=*len;
-	int n=0;
+int sendall(int s, char *buf, int len) {
+	int total = 0;
+	int n = 0;
 
-	while (total<*len) {
-		n=send(s,buf+total,bytesleft,0);
-		if (n==-1)
+	while (total < len) {
+		if ((n = send(s, buf+total, len-total, 0)) == -1)
 			break;
-		total+=n;
-		bytesleft-=n;
+		total += n;
 	}
 
-	/* return number of bytes actually send here */
-	*len=total;
-
-	/* return -1 on failure, 0 on success */
-	return n==-1?-1:0;
+	/* return -1 on failure, bytes on success */
+	return n;
 }
 
 
 /* receives all data - modelled after sendall() */
-int recvall(int s, char *buf, int *len, int timeout) {
+int recvall(int s, char *buf, int len, int timeout) {
 	int total=0;
-	int bytesleft=*len;
 	int n=0;
 	time_t start_time;
 	time_t current_time;
 
 	/* clear the receive buffer */
-	bzero(buf,*len);
+	clear_buffer(buf, len);
 
 	time(&start_time);
 
 	/* receive all data */
-	while (total<*len) {
+	while (total < len) {
 
 		/* receive some data */
-		n=recv(s,buf+total,bytesleft,0);
+		n = recv(s, buf+total, len-total, 0);
 
 		/* no data has arrived yet (non-blocking socket) */
-		if (n==-1 && errno==EAGAIN) {
-			time(&current_time);
-			if (current_time-start_time>timeout)
+		if (n == -1) {
+			if (errno == EAGAIN) {
+				time(&current_time);
+				if (current_time - start_time > timeout)
+					break;
+				sleep(1);
+				continue;
+			}
+			else {
+				printf("%s - %s\n", "Recieve error:", strerror(errno));
 				break;
-			sleep(1);
-			continue;
+			}
 		}
 
 		/* receive error or client disconnect */
-		else if (n<=0)
+		else if (n == 0)
 			break;
 
 		/* apply bytes we received */
-		total+=n;
-		bytesleft-=n;
+		total += n;
 	}
 
-	/* return number of bytes actually received here */
-	*len=total;
-
 	/* return <=0 on failure, bytes received on success */
-	return (n<=0)?n:total;
+	return (n <= 0) ? n : total;
 }
