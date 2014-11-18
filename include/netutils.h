@@ -31,15 +31,12 @@
 
 #include "../include/config.h"
 
-int my_tcp_connect(char *,int,int *);
-int my_connect(char *,int,int *,char *);
+#define PROTO "tcp"
+#define PRTP_PROTO 6
 
-int my_inet_aton(register const char *,struct in_addr *);
+int my_connect(char *, int);
 
-int sendall(int,char *,int *);
-int recvall(int,char *,int *,int);
+int my_inet_aton(const char *, struct in_addr *);
 
-
-
-
-
+int sendall(int, char *, int);
+int recvall(int, char *, int, int);
