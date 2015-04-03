@@ -1,0 +1,36 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 04_nsca.cfg_nagios_vs_nagios.dpatch by  <seanius@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: No description.
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' pkg-nsca~/sample-config/nsca.cfg.in pkg-nsca/sample-config/nsca.cfg.in
+--- pkg-nsca~/sample-config/nsca.cfg.in	2012-02-16 16:26:21.000000000 +0100
++++ pkg-nsca/sample-config/nsca.cfg.in	2013-02-25 11:40:18.427269711 +0100
+@@ -89,9 +89,12 @@
+ # COMMAND FILE
+ # This is the location of the Nagios command file that the daemon
+ # should write all service check results that it receives.
+-
+-command_file=@localstatedir@/rw/nagios.cmd
+-
++# Note to debian users: icinga and nagios3 have
++# different default locations for this file.  this is the
++# default location for icinga
++# command_file=/var/lib/icinga/rw/icinga.cmd
++# and this is the default location for nagios3:
++command_file=/var/lib/nagios3/rw/nagios.cmd
+ 
+ # ALTERNATE DUMP FILE
+ # This is used to specify an alternate file the daemon should
+@@ -103,8 +106,7 @@
+ # it starts Nagios.  Or you may simply choose to ignore any
+ # check results received while Nagios was not running...
+ 
+-alternate_dump_file=@localstatedir@/rw/nsca.dump
+-
++alternate_dump_file=/var/run/nagios/nsca.dump
+ 
+ 
+ # AGGREGATED WRITES OPTION

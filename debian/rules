@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+
+include /usr/share/dpatch/dpatch.make
+
+%:
+	dh $@ --with dpatch,autotools-dev
+
+override_dh_auto_configure:
+	./configure \
+		--with-nsca-user=nagios \
+		--with-nsca-grp=nogroup \
+		--with-nsca-port=5667 \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--libdir=/usr/lib/nagios

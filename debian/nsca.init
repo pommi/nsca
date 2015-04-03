@@ -1,0 +1,84 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          nsca
+# Required-Start:    $local_fs $remote_fs $syslog $named $network $time
+# Required-Stop:     $local_fs $remote_fs $syslog $named $network
+# Should-Start:
+# Should-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Start/Stop the Nagios Service Check Acceptor (nsca) daemon
+### END INIT INFO
+
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+DAEMON=/usr/sbin/nsca
+NAME=nsca
+DESC="Nagios Service Check Acceptor"
+CONF=/etc/nsca.cfg
+OPTS="--daemon -c $CONF"
+PIDFILE="/var/run/nsca.pid"
+
+test -f $DAEMON || exit 0
+
+if ! [ -x "/lib/lsb/init-functions" ]; then
+    . /lib/lsb/init-functions
+else
+    echo "E: /lib/lsb/init-functions not found, lsb-base (>= 3.0-6) needed"
+    exit 1
+fi
+
+# support a default file
+if [ -f /etc/default/nsca ]; then
+    . /etc/default/nsca
+fi
+
+# if the pid_file is specified in the configuration file, nsca will
+# take care of the pid handling for us.  if it isn't we should continue
+# as we have before
+PIDFILE="$(confget -f $CONF pid_file)"
+# if pidfile isn't set
+if [ -z "$PIDFILE" ];  then
+	# then this is the default PIDFILE
+    log_failure_msg "Please set pid_file in /etc/nsca.conf"
+    exit 1
+fi
+
+if [ ! -d "/var/run/nagios" ]; then
+    if ! mkdir -p /var/run/nagios 
+    then
+        log_failure_msg "couldn't create /var/run/nagios"
+        exit 1
+    fi
+fi
+
+case "$1" in
+start)
+	log_daemon_msg "Starting $DESC" "$NAME"
+	start_daemon -p $PIDFILE $DAEMON $OPTS
+    log_end_msg $?
+;;
+stop)
+	log_daemon_msg "Stopping $DESC" "$NAME"
+    start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE
+    log_end_msg $?
+;;
+reload|force-reload)
+    log_daemon_msg "Reloading $DESC configuration files" "$NAME"
+    start-stop-daemon --stop --signal HUP --quiet --pidfile $PIDFILE
+	log_end_msg $?
+;;
+restart)
+	$0 stop
+	$0 start
+;;
+status)
+    status_of_proc -p $PIDFILE $DAEMON $NAME
+;;
+*)
+    log_failure_msg "Usage: $N {start|stop|restart|reload|force-reload|status}"
+    exit 1
+;;
+esac
+
+exit 0

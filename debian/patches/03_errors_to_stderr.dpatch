@@ -1,0 +1,150 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 03_errors_to_stderr.dpatch by  <seanius@debian.org>
+##
+## DP: send errors to stderr, where they belong
+
+@DPATCH@
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' pkg-nsca~/src/netutils.c pkg-nsca/src/netutils.c
+--- pkg-nsca~/src/netutils.c	2011-11-29 08:40:05.000000000 +0100
++++ pkg-nsca/src/netutils.c	2011-12-04 07:58:33.258095494 +0100
+@@ -61,7 +61,7 @@
+ 		/* else do a DNS lookup */
+ 		hp=gethostbyname((const char *)host_name);
+ 		if(hp==NULL){
+-			printf("Invalid host name '%s'\n",host_name);
++			fprintf(stderr, "Invalid host name '%s'\n",host_name);
+ 			return STATE_UNKNOWN;
+ 		        }
+ 
+@@ -70,14 +70,14 @@
+ 
+ 	/* map transport protocol name to protocol number */
+ 	if(((ptrp=getprotobyname(proto)))==NULL){
+-		printf("Cannot map \"%s\" to protocol number\n",proto);
++		fprintf(stderr, "Cannot map \"%s\" to protocol number\n",proto);
+ 		return STATE_UNKNOWN;
+ 	        }
+ 
+ 	/* create a socket */
+ 	*sd=socket(PF_INET,(!strcmp(proto,"udp"))?SOCK_DGRAM:SOCK_STREAM,ptrp->p_proto);
+ 	if(*sd<0){
+-		printf("Socket creation failed\n");
++		fprintf(stderr, "Socket creation failed\n");
+ 		return STATE_UNKNOWN;
+ 	        }
+ 
+@@ -86,16 +86,16 @@
+ 	if(result<0){
+ 		switch(errno){  
+ 		case ECONNREFUSED:
+-			printf("Connection refused by host\n");
++			fprintf(stderr, "Connection refused by host\n");
+ 			break;
+ 		case ETIMEDOUT:
+-			printf("Timeout while attempting connection\n");
++			fprintf(stderr, "Timeout while attempting connection\n");
+ 			break;
+ 		case ENETUNREACH:
+-			printf("Network is unreachable\n");
++			fprintf(stderr, "Network is unreachable\n");
+ 			break;
+ 		default:
+-			printf("Connection refused or timed out\n");
++			fprintf(stderr, "Connection refused or timed out\n");
+ 		        }
+ 
+ 		return STATE_CRITICAL;
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' pkg-nsca~/src/nsca.c pkg-nsca/src/nsca.c
+--- pkg-nsca~/src/nsca.c	2011-12-04 07:51:06.000000000 +0100
++++ pkg-nsca/src/nsca.c	2011-12-04 07:59:36.138097102 +0100
+@@ -92,7 +92,7 @@
+         if(result!=OK || show_help==TRUE || show_license==TRUE || show_version==TRUE){
+ 
+ 		if(result!=OK)
+-			printf("Incorrect command line arguments supplied\n");
++			fprintf(stderr, "Incorrect command line arguments supplied\n");
+                 printf("\n");
+                 printf("NSCA - Nagios Service Check Acceptor\n");
+ 		printf("Copyright (c) 2009 Nagios Core Development Team and Community Contributors\n");
+diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' pkg-nsca~/src/send_nsca.c pkg-nsca/src/send_nsca.c
+--- pkg-nsca~/src/send_nsca.c	2011-12-04 07:51:06.000000000 +0100
++++ pkg-nsca/src/send_nsca.c	2011-12-04 08:03:18.626102801 +0100
+@@ -80,7 +80,7 @@
+ 	if(result!=OK || show_help==TRUE || show_license==TRUE || show_version==TRUE){
+ 
+ 		if(result!=OK)
+-			printf("Incorrect command line arguments supplied\n");
++			fprintf(stderr, "Incorrect command line arguments supplied\n");
+ 		printf("\n");
+ 		printf("NSCA Client %s\n",PROGRAM_VERSION);
+ 		printf("Copyright (c) 2000-2007 Ethan Galstad (www.nagios.org)\n");
+@@ -134,7 +134,7 @@
+ 
+ 	/* exit if there are errors... */
+ 	if(result==ERROR){
+-		printf("Error: Config file '%s' contained errors...\n",config_file);
++		fprintf(stderr, "Error: Config file '%s' contained errors...\n",config_file);
+ 		do_exit(STATE_CRITICAL);
+ 		}
+ 
+@@ -154,7 +154,7 @@
+ 
+ 	/* we couldn't connect */
+ 	if(result!=STATE_OK){
+-		printf("Error: Could not connect to host %s on port %d\n",server_name,server_port);
++		fprintf(stderr, "Error: Could not connect to host %s on port %d\n",server_name,server_port);
+ 		do_exit(STATE_CRITICAL);
+ 	        }
+ 
+@@ -165,7 +165,7 @@
+ 	/* read the initialization packet containing the IV and timestamp */
+ 	result=read_init_packet(sd);
+ 	if(result!=OK){
+-		printf("Error: Could not read init packet from server\n");
++		fprintf(stderr, "Error: Could not read init packet from server\n");
+ 		close(sd);
+ 		do_exit(STATE_CRITICAL);
+ 	        }
+@@ -176,7 +176,7 @@
+ 
+ 	/* initialize encryption/decryption routines with the IV we received from the server */
+         if(encrypt_init(password,encryption_method,received_iv,&CI)!=OK){
+-		printf("Error: Failed to initialize encryption libraries for method %d\n",encryption_method);
++		fprintf(stderr, "Error: Failed to initialize encryption libraries for method %d\n",encryption_method);
+ 		close(sd);
+ 		do_exit(STATE_CRITICAL);
+ 	        }
+@@ -280,7 +280,7 @@
+ 
+ 		/* there was an error sending the packet */
+ 		if(rc==-1){
+-			printf("Error: Could not send data to host\n");
++			fprintf(stderr, "Error: Could not send data to host\n");
+ 			close(sd);
+ 			do_exit(STATE_UNKNOWN);
+ 	                }
+@@ -353,13 +353,13 @@
+ 
+         /* recv() error or server disconnect */
+         if(rc<=0){
+-                printf("Error: Server closed connection before init packet was received\n");
++                fprintf(stderr, "Error: Server closed connection before init packet was received\n");
+                 return ERROR;
+                 }
+ 
+         /* we couldn't read the correct amount of data, so bail out */
+         else if(bytes_to_recv!=sizeof(receive_packet)){
+-                printf("Error: Init packet from server was too short (%d bytes received, %d expected)\n",bytes_to_recv,sizeof(receive_packet));
++                fprintf(stderr, "Error: Init packet from server was too short (%d bytes received, %d expected)\n",bytes_to_recv,sizeof(receive_packet));
+                 return ERROR;
+                 }
+ 
+@@ -468,7 +468,7 @@
+ /* handle timeouts */
+ void alarm_handler(int sig){
+ 
+-	printf("Error: Timeout after %d seconds\n",socket_timeout);
++	fprintf(stderr, "Error: Timeout after %d seconds\n",socket_timeout);
+ 
+ 	do_exit(STATE_CRITICAL);
+         }

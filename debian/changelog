@@ -1,0 +1,251 @@
+nsca (2.9.1-3.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Add autotools-dev for updated config.{sub,guess}. (Closes: #734537)
+
+ -- Chen Baozi <baozich@gmail.com>  Fri, 06 Jun 2014 17:41:32 +0800
+
+nsca (2.9.1-3) unstable; urgency=medium
+
+  * [96b0cb1] Mention icinga in nsca.cfg and remove old cruft
+  * [b5e3a7d] Fix initscript (Closes: #733415)
+
+ -- Alexander Wirt <formorer@debian.org>  Sat, 28 Dec 2013 21:38:12 +0100
+
+nsca (2.9.1-2) unstable; urgency=low
+
+  * [64a9158] Let nsca depend on confget (Closes: 661050)
+
+ -- Alexander Wirt <formorer@debian.org>  Thu, 23 Feb 2012 20:18:08 +0100
+
+nsca (2.9.1-1) unstable; urgency=low
+
+  [ Alexander Wirt ]
+  * new package: nsca-client (Closes: #424645)
+  * Make package non-native again (Closes: #520873)
+  * Acknowledge NMU (Closes: #608049)
+  * [f58d651] Update uploaders
+  * [e876988] Update description of new nsca-client package
+  * [c6366e0] Bump standards version
+  * [9f3772d] Move to dh 7
+  * [a1d2738] Fix dpatch dep
+  * [51dce3a] Fix debhelper dep
+  * [3eb68cb] Add ${misc:Depends}
+  * [59d279a] Add README.source file
+  * [86ff638] Purging is nowadays done by debhelper
+  * [21deeb4] Refresh patches
+  * [53550ef] Move NEWS to nsca package
+  * [1bb551b] Rework initscript (Closes: #650273, #550232)
+  * [52bdf4d] Imported Upstream version 2.9.1
+  * [d9f10aa] set PATH in initscript (Closes: #631550)
+
+  [ Paul Belanger ]
+  * [9b90350] nsca now Depends on nsca-client
+
+ -- Alexander Wirt <formorer@debian.org>  Tue, 21 Feb 2012 21:16:01 +0100
+
+nsca (2.7.2+nmu2) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * Respect configuration rather than blindly starting nsca
+    as user "nobody" (closes: #606951)
+  * Add Danish translation (closes: #600114)
+  * Suggest nagios3, not nagios, in the binary package (closes: #543901)
+
+ -- Jonathan Wiltshire <jmw@debian.org>  Sun, 26 Dec 2010 15:31:01 +0000
+
+nsca (2.7.2+nmu1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix nsca starting as daemon when disabled in debconf and using an unusual
+    PID (Closes: #604053).
+
+ -- Xavier Oswald <xoswald@debian.org>  Sun, 28 Nov 2010 10:59:05 +0100
+
+nsca (2.7.2) unstable; urgency=low
+
+  * New upstream version (Closes: #466353)
+  * Add swedish translation (Closes: #503606)
+  * Add japaneѕe translation (Closes: #512985)
+  * Add spanish translation (Closes: #514887)
+  * Refer to nagios3 in command_file configuration
+    (Closes: #509334)
+  * Remove 05_nsca_format_string.dpatch (included upstream)
+
+ -- Alexander Wirt <formorer@debian.org>  Sat, 21 Mar 2009 20:21:07 +0100
+
+nsca (2.6-4) unstable; urgency=low
+
+  [ Alexander Wirt ]
+  * Don't fail if nsca is already started or stopped (Closes: #496810)
+  * Add myself to uploaders
+  * Add LSB dependency info to initscript (Closes: #466261)
+  * Update postinst to nagios3 (Closes: #495034)
+  * Mention dpkg-reconfigure in README.debian
+
+ -- Alexander Wirt <formorer@debian.org>  Sun, 14 Sep 2008 09:00:17 +0200
+
+nsca (2.6-3.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Fix bashism in debian/rules (Closes: #484419)
+  * Bump Standards-Version to 3.8.0.
+
+ -- Chris Lamb <chris@chris-lamb.co.uk>  Fri, 11 Jul 2008 23:26:02 +0100
+
+nsca (2.6-3.1) unstable; urgency=low
+
+  * Non-maintainer upload to fix pending l10n issues.
+  * Reformat the package description to hard-format
+    the enumeration part. Closes: #432465
+  * Debconf translations:
+    - Portuguese. Closes: #435739
+    - Dutch. Closes: #448119
+    - German. Closes: #414590
+    - Galician. Closes: #476814
+    - Finnish. Closes: #476878
+    - Basque. Closes: #476918
+    - Russian. Closes: #477985
+  * [Lintian] Reformat NEWS.Debian to fit the changelog format
+  * [Lintian] Add copyright information to debian/copyright
+  * [Lintian] Drop init script start/stop from postinst, prerm as
+    this is added anyway by dh_installinit
+  * [Lintian] No longer hide init script failures in postinst
+  * [Lintian] No longer include empty usr/bin directory
+  * [Lintian] Add po-debconf to Build-Depends (use in the clean target)
+  * [Lintian] Properly format debian/NEWS trailer line
+
+ -- Christian Perrier <bubulle@debian.org>  Thu, 03 Apr 2008 07:53:58 +0200
+
+nsca (2.6-3) unstable; urgency=low
+
+  [sean finney]
+  * update the location of the nagios2 command file.  thanks to
+    Heiko Schlittermann for finding this (closes: #396343).
+
+ -- sean finney <seanius@debian.org>  Wed, 01 Nov 2006 19:14:29 +0100
+
+nsca (2.6-2) unstable; urgency=low
+
+  [sean finney]
+  * include fix for format-string crashing, thanks to Ulf Harnhammar
+    for the thorough description and clean patch. closes: #392010.
+  * new Czech debconf translations, thanks to Martin Šín (closes: #382925).
+  * lintian fix: add debconf dependency.
+  * lintian ignore: multiple update-rc.d calls in postinst (resulting
+    from the script enabling/disabling code).
+
+ -- sean finney <seanius@debian.org>  Mon, 09 Oct 2006 23:59:21 +0200
+
+nsca (2.6-1) unstable; urgency=low
+
+  * New upstream release
+
+  [sean finney]
+  * new french debconf translations from Sylvain Archenault (closes: #362712).
+  * upstream has incorporated our chroot support patch, so
+    05_nsca_chroot.dpatch is no longer necessary.
+  * includes fix for segfault in encryption library cleanup (closes: #357275).
+  * initscript modifications to relfect that nsca now supports a pid_file
+    directive and reloading of configuration via HUP natively.
+  * maintscript cleanup for config<->debconf starting/stopping nsca stuff.
+
+  [marc haber]
+  * allow buildclientpackage to be set from the build environment
+
+ -- sean finney <seanius@debian.org>  Mon, 29 May 2006 11:28:38 +0200
+
+nsca (2.5-2) unstable; urgency=low
+
+  [sean finney]
+  * add debconf support for whether nsca service should
+    be installed at boot time.  if nagios/nagios2 is installed
+    the default behaviour is to start/stop the daemon.  otherwise,
+    the default is to not activate it.  this should make a single nsca
+    package useful for both "central server" and "satellite"
+    installations, as well as making it easier for admins to run
+    it out of inetd configurations as well (closes: #281828, #353901).
+  * nsca now supports chrooting when run in daemon mode (closes: #353272).  
+
+  [marc haber]
+  * remove install calls from debian/rules, use dh_install to ease
+    backporting. Adapt lintian override file to nagios2 method.
+  * Add possibility to locally build an nsca-client package which cannot
+    be in Debian.
+
+ -- sean finney <seanius@debian.org>  Fri, 31 Mar 2006 07:27:21 +0200
+
+nsca (2.5-1) unstable; urgency=low
+
+  * New upstream release
+
+  [sean finney]
+  * add patch to fix localstatedir file locations in nsca.cfg
+  * fix for upstream shuffling of some files' location in the tarball.
+  * lintian fixes in manpage
+  * migrate to svn while we're at it.
+
+ -- sean finney <seanius@debian.org>  Sun, 12 Feb 2006 19:22:13 +0100
+
+nsca (2.4-6) unstable; urgency=low
+
+  * Sean Finney:
+    - errors and warnings now go to stderr (closes: #294097).
+    - move away from this debmake stuff for building, because
+      i don't understand it and it's getting to the point i have
+      to work with it.
+    - manpages by yours truly
+    - nsca now uses the init script by default.  it can be disabled
+      in favor of inetd support, but the default will now be init
+      based.
+
+ -- sean finney <seanius@debian.org>  Sat, 10 Dec 2005 21:17:36 +0100
+
+nsca (2.4-5) unstable; urgency=low
+
+  * Sean Finney:
+    - include a simple init script for those who would prefer to avoid
+      using inetd (closes: #336712).  for the time being, inetd is still
+      the default so no runlevel symlinks are installed, but this may
+      change in the future.
+    - include a patch to let nsca run without forking to the background;
+      this is necessary for the above feature.
+    - default to using /etc/send_nsca.cfg instead of ./send_nsca.cfg.
+      thanks to Juraj Bednar for pointing this out (closes: #342017).
+
+ -- sean finney <seanius@debian.org>  Mon, 05 Dec 2005 11:50:24 +0100
+
+nsca (2.4-4) unstable; urgency=low
+
+  * nsca is now part of the pkg-nagios alioth project.
+  * Sean Finney
+    - update Maintainer/Uploaders to reflect Maintainership.
+    - update Depends and Suggests to reflect that nsca does not require
+      nagios to be installed, which should keep the installation footprint
+      much smaller (closes: #324821, #270796).
+    - update Standards-Version to 3.6.2.
+
+ -- sean finney <seanius@debian.org>  Sat, 29 Oct 2005 14:07:22 +0200
+
+nsca (2.4-3) unstable; urgency=low
+
+  * Adapted the path to the more recent nagios packages (Closes: #282589)
+
+ -- Cajus Pollmeier <cajus@debian.org>  Tue, 23 Nov 2004 19:43:01 +0100
+
+nsca (2.4-2) unstable; urgency=low
+
+  * Added build dependency on debstd which is part of debmake.
+    (Closes: #245508)
+
+ -- Cajus Pollmeier <cajus@debian.org>  Fri, 23 Apr 2004 18:04:01 +0200
+
+nsca (2.4-1) unstable; urgency=low
+
+  * Initial upload. (Closes: #241405)
+
+ -- Cajus Pollmeier <cajus@debian.org>  Mon, 29 Mar 2004 15:39:36 +0200
+
+Local variables:
+mode: debian-changelog
+End:
