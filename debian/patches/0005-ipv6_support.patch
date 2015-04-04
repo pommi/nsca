@@ -1,0 +1,435 @@
+From: Florian Obser <florian@narrans.de>
+Date: Thu, 26 Aug 2010 23:31:39 +0200
+Subject: ipv6_support
+
+IPv6 support for nsca and send_nsca
+---
+ configure          |   2 +-
+ configure.in       |   2 +-
+ include/netutils.h |   5 +-
+ src/netutils.c     | 209 +++++++++++------------------------------------------
+ src/nsca.c         |  87 +++++++++++-----------
+ src/send_nsca.c    |   8 +-
+ 6 files changed, 97 insertions(+), 216 deletions(-)
+
+diff --git a/configure b/configure
+index 31baa9f..9d321b5 100755
+--- a/configure
++++ b/configure
+@@ -6447,7 +6447,7 @@ fi;
+ 
+ 
+ cat >>confdefs.h <<_ACEOF
+-#define DEFAULT_SERVER_PORT $nsca_port
++#define DEFAULT_SERVER_PORT "$nsca_port"
+ _ACEOF
+ 
+ 
+diff --git a/configure.in b/configure.in
+index aa34e02..2ea75e9 100644
+--- a/configure.in
++++ b/configure.in
+@@ -231,7 +231,7 @@ AC_ARG_WITH(nsca_port,--with-nsca-port=<port> sets port number for NSCA to liste
+ AC_SUBST(nsca_user)
+ AC_SUBST(nsca_grp)
+ AC_SUBST(nsca_port)
+-AC_DEFINE_UNQUOTED(DEFAULT_SERVER_PORT,$nsca_port,[Default port for NSCA daemon])
++AC_DEFINE_UNQUOTED(DEFAULT_SERVER_PORT,["$nsca_port"],[Default port for NSCA daemon])
+ 
+ # Determine target OS, version and architecture for package build macros
+ if test "x$target_ver" = "x" ; then
+diff --git a/include/netutils.h b/include/netutils.h
+index 21a2bcb..3aca2b1 100644
+--- a/include/netutils.h
++++ b/include/netutils.h
+@@ -31,10 +31,7 @@
+ 
+ #include "../include/config.h"
+ 
+-int my_tcp_connect(char *,int,int *);
+-int my_connect(char *,int,int *,char *);
+-
+-int my_inet_aton(register const char *,struct in_addr *);
++int my_tcp_connect(char *,char *,int *);
+ 
+ int sendall(int,char *,int *);
+ int recvall(int,char *,int *,int);
+diff --git a/src/netutils.c b/src/netutils.c
+index 5617a34..ab56ec4 100644
+--- a/src/netutils.c
++++ b/src/netutils.c
+@@ -35,176 +35,55 @@
+ 
+ 
+ /* opens a connection to a remote host/tcp port */
+-int my_tcp_connect(char *host_name,int port,int *sd){
++int my_tcp_connect(char *host_name,char *port,int *sd6){
+ 	int result;
+-
+-	result=my_connect(host_name,port,sd,"tcp");
+-
+-	return result;
+-        }
+-
+-
+-/* opens a tcp or udp connection to a remote host */
+-int my_connect(char *host_name,int port,int *sd,char *proto){
+-	struct sockaddr_in servaddr;
+-	struct hostent *hp;
+-	struct protoent *ptrp;
+-	int result;
+-
+-	bzero((char *)&servaddr,sizeof(servaddr));
+-	servaddr.sin_family=AF_INET;
+-	servaddr.sin_port=htons(port);
+-
+-	/* try to bypass using a DNS lookup if this is just an IP address */
+-	if(!my_inet_aton(host_name,&servaddr.sin_addr)){
+-
+-		/* else do a DNS lookup */
+-		hp=gethostbyname((const char *)host_name);
+-		if(hp==NULL){
+-			fprintf(stderr, "Invalid host name '%s'\n",host_name);
+-			return STATE_UNKNOWN;
+-		        }
+-
+-		memcpy(&servaddr.sin_addr,hp->h_addr,hp->h_length);
+-	        }
+-
+-	/* map transport protocol name to protocol number */
+-	if(((ptrp=getprotobyname(proto)))==NULL){
+-		fprintf(stderr, "Cannot map \"%s\" to protocol number\n",proto);
++	int rval;
++	int success=0;
++	struct addrinfo addrinfo;
++	struct addrinfo *res, *r;
++
++	memset(&addrinfo, 0, sizeof(addrinfo));
++	addrinfo.ai_family=PF_UNSPEC;
++	addrinfo.ai_socktype=SOCK_STREAM;
++	addrinfo.ai_protocol=IPPROTO_TCP;
++	if (rval = getaddrinfo(host_name, port, &addrinfo, &res) != 0) {
++		fprintf(stderr, "Invalid host name '%s'\n",host_name);
+ 		return STATE_UNKNOWN;
+-	        }
+-
+-	/* create a socket */
+-	*sd=socket(PF_INET,(!strcmp(proto,"udp"))?SOCK_DGRAM:SOCK_STREAM,ptrp->p_proto);
+-	if(*sd<0){
+-		fprintf(stderr, "Socket creation failed\n");
+-		return STATE_UNKNOWN;
+-	        }
+-
+-	/* open a connection */
+-	result=connect(*sd,(struct sockaddr *)&servaddr,sizeof(servaddr));
+-	if(result<0){
+-		switch(errno){  
+-		case ECONNREFUSED:
+-			fprintf(stderr, "Connection refused by host\n");
+-			break;
+-		case ETIMEDOUT:
+-			fprintf(stderr, "Timeout while attempting connection\n");
+-			break;
+-		case ENETUNREACH:
+-			fprintf(stderr, "Network is unreachable\n");
++		}
++
++	for (r=res; r; r = r->ai_next) {   
++		*sd6 = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
++		result=connect(*sd6, r->ai_addr, r->ai_addrlen);
++
++		if(result<0){    
++			switch(errno){  
++				case ECONNREFUSED:
++					fprintf(stderr, "Connection refused by host\n");
++					break;
++				case ETIMEDOUT:
++					fprintf(stderr, "Timeout while attempting connection\n");
++					break;
++				case ENETUNREACH:
++					fprintf(stderr, "Network is unreachable\n");
++					break;
++				default:
++					fprintf(stderr, "Connection refused or timed out\n");
++				}
++			(void) close(*sd6);            
++			}
++		else {
++			success++;
+ 			break;
+-		default:
+-			fprintf(stderr, "Connection refused or timed out\n");
+-		        }
+-
++			}
++		}
++	if (success == 0) {
++		fprintf(stderr, "Socket creation failed\n");
++		freeaddrinfo(res);
+ 		return STATE_CRITICAL;
+-	        }
+-
++		}
++	freeaddrinfo(res);
+ 	return STATE_OK;
+-        }
+-
+-
+-
+-/* This code was taken from Fyodor's nmap utility, which was originally taken from
+-   the GLIBC 2.0.6 libraries because Solaris doesn't contain the inet_aton() funtion. */
+-int my_inet_aton(register const char *cp, struct in_addr *addr){
+-	register unsigned int val;	/* changed from u_long --david */
+-	register int base, n;
+-	register char c;
+-	u_int parts[4];
+-	register u_int *pp = parts;
+-
+-	c=*cp;
+-
+-	for(;;){
+-
+-		/*
+-		 * Collect number up to ``.''.
+-		 * Values are specified as for C:
+-		 * 0x=hex, 0=octal, isdigit=decimal.
+-		 */
+-		if (!isdigit((int)c))
+-			return (0);
+-		val=0;
+-		base=10;
+-
+-		if(c=='0'){
+-			c=*++cp;
+-			if(c=='x'||c=='X')
+-				base=16,c=*++cp;
+-			else
+-				base=8;
+-		        }
+-
+-		for(;;){
+-			if(isascii((int)c) && isdigit((int)c)){
+-				val=(val*base)+(c -'0');
+-				c=*++cp;
+-			        } 
+-			else if(base==16 && isascii((int)c) && isxdigit((int)c)){
+-				val=(val<<4) | (c+10-(islower((int)c)?'a':'A'));
+-				c = *++cp;
+-			        } 
+-			else
+-				break;
+-		        }
+-
+-		if(c=='.'){
+-
+-			/*
+-			 * Internet format:
+-			 *	a.b.c.d
+-			 *	a.b.c	(with c treated as 16 bits)
+-			 *	a.b	(with b treated as 24 bits)
+-			 */
+-			if(pp>=parts+3)
+-				return (0);
+-			*pp++=val;
+-			c=*++cp;
+-		        } 
+-		else
+-			break;
+-	        }
+-
+-	/* Check for trailing characters */
+-	if(c!='\0' && (!isascii((int)c) || !isspace((int)c)))
+-		return (0);
+-
+-	/* Concoct the address according to the number of parts specified */
+-	n=pp-parts+1;
+-	switch(n){
+-
+-	case 0:
+-		return (0);		/* initial nondigit */
+-
+-	case 1:				/* a -- 32 bits */
+-		break;
+-
+-	case 2:				/* a.b -- 8.24 bits */
+-		if(val>0xffffff)
+-			return (0);
+-		val|=parts[0]<<24;
+-		break;
+-
+-	case 3:				/* a.b.c -- 8.8.16 bits */
+-		if(val>0xffff)
+-			return (0);
+-		val|=(parts[0]<< 24) | (parts[1]<<16);
+-		break;
+-
+-	case 4:				/* a.b.c.d -- 8.8.8.8 bits */
+-		if(val>0xff)
+-			return (0);
+-		val|=(parts[0]<<24) | (parts[1]<<16) | (parts[2]<<8);
+-		break;
+-	        }
+-
+-	if(addr)
+-		addr->s_addr=htonl(val);
+-
+-	return (1);
+-        }
++	}
+ 
+ 
+ 
+diff --git a/src/nsca.c b/src/nsca.c
+index d406fb0..c032d98 100644
+--- a/src/nsca.c
++++ b/src/nsca.c
+@@ -23,8 +23,8 @@
+ #include "../include/nsca.h"
+ 
+ 
+-static int server_port=DEFAULT_SERVER_PORT;
+-static char server_address[16]="0.0.0.0";
++char *server_port=DEFAULT_SERVER_PORT;
++char    *server_address=NULL;
+ static int socket_timeout=DEFAULT_SOCKET_TIMEOUT;
+ static int log_facility=LOG_DAEMON;
+ 
+@@ -382,13 +382,9 @@ static int read_config_file(char *filename){
+                         return ERROR;
+                         }
+ 
+-                if(!strcmp(varname,"server_port")){
+-                        server_port=atoi(varvalue);
+-                        if((server_port<1024 && (geteuid()!=0)) || server_port<0){
+-                                syslog(LOG_ERR,"Invalid port number specified in config file '%s' - Line %d\n",filename,line);
+-                                return ERROR;
+-                                }
+-                        }
++                if(!strcmp(varname,"server_port"))
++			server_port=strdup(varvalue);
++
+ 		else if(!strcmp(varname,"server_address")){
+                         strncpy(server_address,varvalue,sizeof(server_address) - 1);
+                         server_address[sizeof(server_address)-1]='\0';
+@@ -796,40 +792,49 @@ static void wait_for_connections(void) {
+         int sock=0;
+         int flag=1;
+ 
+-        /* create a socket for listening */
+-        sock=socket(AF_INET,SOCK_STREAM,0);
+-
+-        /* exit if we couldn't create the socket */
+-        if(sock<0){
+-                syslog(LOG_ERR,"Network server socket failure (%d: %s)",errno,strerror(errno));
+-                do_exit(STATE_CRITICAL);
+-                }
+-
+-        /* set the reuse address flag so we don't get errors when restarting */
+-        flag=1;
+-        if(setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(char *)&flag,sizeof(flag))<0){
+-                syslog(LOG_ERR,"Could not set reuse address option on socket!\n");
+-                do_exit(STATE_CRITICAL);
+-                }
+-
+-        myname.sin_family=AF_INET;
+-        myname.sin_port=htons(server_port);
+-        bzero(&myname.sin_zero,8);
+-
+-        /* what address should we bind to? */
+-        if(!strlen(server_address))
+-                myname.sin_addr.s_addr=INADDR_ANY;
+-        else if(!my_inet_aton(server_address,&myname.sin_addr)){
+-                syslog(LOG_ERR,"Server address is not a valid IP address\n");
+-                do_exit(STATE_CRITICAL);
+-                }
++	int rval;
++	int success=0;
++	struct addrinfo addrinfo;
++	struct addrinfo *res, *r;
+ 
++	memset(&addrinfo, 0, sizeof(addrinfo));
++	addrinfo.ai_family=PF_UNSPEC;
++	addrinfo.ai_socktype=SOCK_STREAM;
++	addrinfo.ai_protocol=IPPROTO_TCP;
+ 
+-        /* bind the address to the Internet socket */
+-        if(bind(sock,(struct sockaddr *)&myname,sizeof(myname))<0){
+-                syslog(LOG_ERR,"Network server bind failure (%d: %s)\n",errno,strerror(errno));
+-                do_exit(STATE_CRITICAL);
+-                }
++	if(!server_address || !strlen(server_address)) {
++		server_address = NULL;
++		addrinfo.ai_flags=AI_PASSIVE;
++		}
++	if (rval = getaddrinfo(server_address, server_port, &addrinfo, &res) != 0) {
++		syslog(LOG_ERR,"Invalid server_address (%d: %s)",errno,strerror(errno));
++		do_exit(STATE_CRITICAL);
++		}
++	else {
++		for (r=res; r; r = r->ai_next) {   
++			sock = socket(r->ai_family, r->ai_socktype, r->ai_protocol);
++			/* socket should be non-blocking */
++			fcntl(sock,F_SETFL,O_NONBLOCK);
++			/* set the reuse address flag so we don't get errors when restarting */
++			flag=1;
++			if(setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,(char *)&flag,sizeof(flag))<0){
++				syslog(LOG_ERR,"Could not set reuse address option on socket!\n");
++				do_exit(STATE_UNKNOWN);
++				}
++			if(bind(sock, r->ai_addr, r->ai_addrlen) < 0) {
++				syslog(LOG_ERR,"Network server bind failure (%d: %s)\n",errno,strerror(errno));
++				(void) close(sock);
++				}
++			else {
++				success=1;
++				break;
++				}
++			}
++		freeaddrinfo(res);
++		if(success == 0) {
++			do_exit(STATE_CRITICAL);
++			}
++		}
+ 
+         /* open the socket for listening */
+         if(listen(sock,SOMAXCONN)<0){
+diff --git a/src/send_nsca.c b/src/send_nsca.c
+index d247a7d..359ae48 100644
+--- a/src/send_nsca.c
++++ b/src/send_nsca.c
+@@ -22,7 +22,7 @@
+ 
+ time_t start_time,end_time;
+ 
+-int server_port=DEFAULT_SERVER_PORT;
++char *server_port=DEFAULT_SERVER_PORT;
+ char server_name[MAX_HOST_ADDRESS_LENGTH];
+ char password[MAX_INPUT_BUFFER]="";
+ char config_file[MAX_INPUT_BUFFER]="/etc/send_nsca.cfg";
+@@ -101,7 +101,7 @@ int main(int argc, char **argv){
+ 		printf("\n");
+ 		printf("Options:\n");
+ 		printf(" <host_address> = The IP address of the host running the NSCA daemon\n");
+-		printf(" [port]         = The port on which the daemon is running - default is %d\n",DEFAULT_SERVER_PORT);
++		printf(" [port]         = The port on which the daemon is running - default is %s\n",DEFAULT_SERVER_PORT);
+ 		printf(" [to_sec]       = Number of seconds before connection attempt times out.\n");
+ 		printf("                  (default timeout is %d seconds)\n",DEFAULT_SOCKET_TIMEOUT);
+ 		printf(" [delim]        = Delimiter to use when parsing input (defaults to a tab)\n");
+@@ -154,7 +154,7 @@ int main(int argc, char **argv){
+ 
+ 	/* we couldn't connect */
+ 	if(result!=STATE_OK){
+-		fprintf(stderr, "Error: Could not connect to host %s on port %d\n",server_name,server_port);
++		fprintf(stderr, "Error: Could not connect to host %s on port %s\n",server_name,server_port);
+ 		do_exit(STATE_CRITICAL);
+ 	        }
+ 
+@@ -415,7 +415,7 @@ int process_arguments(int argc, char **argv){
+ 		/* port to connect to */
+ 		else if(!strcmp(argv[x-1],"-p")){
+ 			if(x<argc){
+-				server_port=atoi(argv[x]);
++				server_port=strdup(argv[x]);
+ 				x++;
+ 			        }
+ 			else
