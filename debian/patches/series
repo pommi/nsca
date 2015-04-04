@@ -1,0 +1,4 @@
+0001-send_nsca.cfg.patch
+0002-nsca_foreground.patch
+0003-errors_to_stderr.patch
+0004-nsca.cfg_nagios_vs_nagios.patch

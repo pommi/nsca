@@ -1,14 +1,17 @@
-#! /bin/sh /usr/share/dpatch/dpatch-run
-## 04_nsca.cfg_nagios_vs_nagios.dpatch by  <seanius@debian.org>
-##
-## All lines beginning with `## DP:' are a description of the patch.
-## DP: No description.
+From: Sean Finney <seanius@debian.org>
+Date: Mon, 25 Feb 2013 11:40:18 +0100
+Subject: nsca.cfg_nagios_vs_nagios
 
-@DPATCH@
-diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' '--exclude=.hg' '--exclude=_darcs' '--exclude=.bzr' pkg-nsca~/sample-config/nsca.cfg.in pkg-nsca/sample-config/nsca.cfg.in
---- pkg-nsca~/sample-config/nsca.cfg.in	2012-02-16 16:26:21.000000000 +0100
-+++ pkg-nsca/sample-config/nsca.cfg.in	2013-02-25 11:40:18.427269711 +0100
-@@ -89,9 +89,12 @@
+===================================================================
+---
+ sample-config/nsca.cfg.in | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/sample-config/nsca.cfg.in b/sample-config/nsca.cfg.in
+index b866e38..4e68cf3 100644
+--- a/sample-config/nsca.cfg.in
++++ b/sample-config/nsca.cfg.in
+@@ -89,9 +89,12 @@ debug=0
  # COMMAND FILE
  # This is the location of the Nagios command file that the daemon
  # should write all service check results that it receives.
@@ -24,7 +27,7 @@ diff -urNad '--exclude=CVS' '--exclude=.svn' '--exclude=.git' '--exclude=.arch' 
  
  # ALTERNATE DUMP FILE
  # This is used to specify an alternate file the daemon should
-@@ -103,8 +106,7 @@
+@@ -103,8 +106,7 @@ command_file=@localstatedir@/rw/nagios.cmd
  # it starts Nagios.  Or you may simply choose to ignore any
  # check results received while Nagios was not running...
  

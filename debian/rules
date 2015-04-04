@@ -1,9 +1,9 @@
 #!/usr/bin/make -f
 
-include /usr/share/dpatch/dpatch.make
+include /usr/share/quilt/quilt.make
 
 %:
-	dh $@ --with dpatch,autotools-dev
+	dh $@ --with quilt
 
 override_dh_auto_configure:
 	./configure \
