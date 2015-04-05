@@ -8,9 +8,9 @@ IPv6 support for nsca and send_nsca
  configure.in       |   2 +-
  include/netutils.h |   5 +-
  src/netutils.c     | 209 +++++++++++------------------------------------------
- src/nsca.c         |  87 +++++++++++-----------
+ src/nsca.c         |  90 ++++++++++++-----------
  src/send_nsca.c    |   8 +-
- 6 files changed, 97 insertions(+), 216 deletions(-)
+ 6 files changed, 98 insertions(+), 218 deletions(-)
 
 diff --git a/configure b/configure
 index 31baa9f..9d321b5 100755
@@ -280,7 +280,7 @@ index 5617a34..ab56ec4 100644
  
  
 diff --git a/src/nsca.c b/src/nsca.c
-index d406fb0..c032d98 100644
+index d406fb0..7868142 100644
 --- a/src/nsca.c
 +++ b/src/nsca.c
 @@ -23,8 +23,8 @@
@@ -294,7 +294,7 @@ index d406fb0..c032d98 100644
  static int socket_timeout=DEFAULT_SOCKET_TIMEOUT;
  static int log_facility=LOG_DAEMON;
  
-@@ -382,13 +382,9 @@ static int read_config_file(char *filename){
+@@ -382,16 +382,11 @@ static int read_config_file(char *filename){
                          return ERROR;
                          }
  
@@ -309,9 +309,13 @@ index d406fb0..c032d98 100644
 +			server_port=strdup(varvalue);
 +
  		else if(!strcmp(varname,"server_address")){
-                         strncpy(server_address,varvalue,sizeof(server_address) - 1);
-                         server_address[sizeof(server_address)-1]='\0';
-@@ -796,40 +792,49 @@ static void wait_for_connections(void) {
+-                        strncpy(server_address,varvalue,sizeof(server_address) - 1);
+-                        server_address[sizeof(server_address)-1]='\0';
++                        server_address=strdup(varvalue);
+                         }
+ 		else if(strstr(input_buffer,"command_file")){
+                         if(strlen(varvalue)>sizeof(command_file)-1){
+@@ -796,40 +791,49 @@ static void wait_for_connections(void) {
          int sock=0;
          int flag=1;
  
