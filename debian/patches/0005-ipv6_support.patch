@@ -8,9 +8,9 @@ IPv6 support for nsca and send_nsca
  configure.in       |   2 +-
  include/netutils.h |   5 +-
  src/netutils.c     | 209 +++++++++++------------------------------------------
- src/nsca.c         |  90 ++++++++++++-----------
+ src/nsca.c         | 123 ++++++++++++++++++-------------
  src/send_nsca.c    |   8 +-
- 6 files changed, 98 insertions(+), 218 deletions(-)
+ 6 files changed, 123 insertions(+), 226 deletions(-)
 
 diff --git a/configure b/configure
 index 31baa9f..9d321b5 100755
@@ -280,7 +280,7 @@ index 5617a34..ab56ec4 100644
  
  
 diff --git a/src/nsca.c b/src/nsca.c
-index d406fb0..7868142 100644
+index d406fb0..5d85705 100644
 --- a/src/nsca.c
 +++ b/src/nsca.c
 @@ -23,8 +23,8 @@
@@ -315,7 +315,11 @@ index d406fb0..7868142 100644
                          }
  		else if(strstr(input_buffer,"command_file")){
                          if(strlen(varvalue)>sizeof(command_file)-1){
-@@ -796,40 +791,49 @@ static void wait_for_connections(void) {
+@@ -792,44 +787,52 @@ static void handle_events(void){
+ 
+ /* wait for incoming connection requests */
+ static void wait_for_connections(void) {
+-        struct sockaddr_in myname;
          int sock=0;
          int flag=1;
  
@@ -397,6 +401,68 @@ index d406fb0..7868142 100644
  
          /* open the socket for listening */
          if(listen(sock,SOMAXCONN)<0){
+@@ -841,7 +844,7 @@ static void wait_for_connections(void) {
+         syslog(LOG_NOTICE,"Starting up daemon");
+ 
+         if(debug==TRUE){
+-                syslog(LOG_DEBUG,"Listening for connections on port %d\n",htons(myname.sin_port));
++                syslog(LOG_DEBUG,"Listening for connections on %s port %s\n",server_address,server_port);
+                 }
+ 
+ 	/* socket should be non-blocking for mult-process daemon */
+@@ -877,8 +880,10 @@ static void wait_for_connections(void) {
+ static void accept_connection(int sock, void *unused){
+         int new_sd;
+         pid_t pid;
+-        struct sockaddr addr;
++        struct sockaddr_storage addr;
+         struct sockaddr_in *nptr;
++		struct sockaddr_in6 *nptr6;
++		char ipstr[INET6_ADDRSTRLEN];
+         socklen_t addrlen;
+         int rc;
+ #ifdef HAVE_LIBWRAP
+@@ -960,7 +965,7 @@ static void accept_connection(int sock, void *unused){
+ 
+         /* find out who just connected... */
+         addrlen=sizeof(addr);
+-        rc=getpeername(new_sd,&addr,&addrlen);
++		rc=getpeername(new_sd, (struct sockaddr *)&addr, &addrlen);
+ 
+         if(rc<0){
+                 /* log error to syslog facility */
+@@ -973,11 +978,27 @@ static void accept_connection(int sock, void *unused){
+ 		return;
+                 }
+ 
+-        nptr=(struct sockaddr_in *)&addr;
++		switch(addr.ss_family) {
++		case AF_INET:
++			nptr=(struct sockaddr_in *)&addr;
+ 
+-        /* log info to syslog facility */
+-        if(debug==TRUE)
+-                syslog(LOG_DEBUG,"Connection from %s port %d",inet_ntoa(nptr->sin_addr),nptr->sin_port);
++			/* log info to syslog facility */
++			if(debug==TRUE)
++				syslog(LOG_DEBUG,"Connection from %s:%d",inet_ntoa(nptr->sin_addr),ntohs(nptr->sin_port));
++			break;
++		case AF_INET6:
++			nptr6 = (struct sockaddr_in6 *)&addr;
++			if(inet_ntop(AF_INET6,
++				(const void *)&(nptr6->sin6_addr), ipstr,
++				sizeof(ipstr)) == NULL) {
++					strncpy(ipstr, "Unknown", sizeof(ipstr));
++			}
++
++			/* log info to syslog facility */
++			if(debug==TRUE)
++				syslog(LOG_DEBUG,"Connection from [%s]:%d", ipstr, ntohs(nptr6->sin6_port));
++			break;
++		}
+ 
+ 	/* handle the connection */
+ 	if(mode==SINGLE_PROCESS_DAEMON)
 diff --git a/src/send_nsca.c b/src/send_nsca.c
 index d247a7d..359ae48 100644
 --- a/src/send_nsca.c
